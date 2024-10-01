@@ -16,7 +16,7 @@ T = 0.1  # End time
 num_steps = 100  # Number of time steps
 d_t = (T - ti) / num_steps  # Time step size
 
-n = 16
+n = 4
 degree = 1
 
 domain = mesh.create_unit_cube(MPI.COMM_WORLD, n, n, n, mesh.CellType.hexahedron)
@@ -89,15 +89,13 @@ v1 = ufl.TestFunction(V1)
 
 f = curl(curl(uex)) + diff(uex, t) + grad(diff(uex1,t))
 a00 = dt * inner(curl(u), curl(v)) * dx + inner(u, v) * dx 
-L0 = inner(f, v) * dt * dx + inner(u_n, v) * dx + inner(grad(diff(uex1,t)), v) * dx
+L0 = inner(f, v) * dt * dx + inner(u_n, v) * dx - dt * inner(grad(diff(uex1,t)), v) * dx
 
 f1 = -div(f)
 a11 = inner(grad(u1), grad(v1)) * dx
-L1 = inner(f1, v1) * dt * dx + inner(grad(u_n1), grad(v1)) * dx + inner(diff(uex,t), grad(v1)) * dx
+L1 = inner(f1, v1) * dt * dx + inner(grad(u_n1), grad(v1)) * dx - dt * inner(diff(uex,t), grad(v1)) * dx
 
-a01 = inner(grad(u1), v) * dx
 a01 = None
-# a10 = inner(grad(v1), u) * dx
 a10 = None
 
 a = form([[a00, a01], [a10, a11]])
