@@ -1,3 +1,4 @@
+#%%
 from mpi4py import MPI
 import numpy
 import ufl
@@ -13,7 +14,7 @@ from basix.ufl import element
 
 ti = 0.0  # Start time
 T = 0.1  # End time
-num_steps = 100  # Number of time steps
+num_steps = 4000  # Number of time steps
 d_t = (T - ti) / num_steps  # Time step size
 
 n = 4
@@ -59,11 +60,11 @@ facet_dim = gdim - 1
 facets = mesh.locate_entities_boundary(domain, dim=facet_dim,
                                         marker= boundary_marker)
 
-bdofs0 = fem.locate_dofs_topological(V, entity_dim=facet_dim, entities=facets)
+bdofs = fem.locate_dofs_topological(V, entity_dim=facet_dim, entities=facets)
 u_bc_expr_V = Expression(uex, V.element.interpolation_points())
 u_bc_V = Function(V)
 u_bc_V.interpolate(u_bc_expr_V)
-bc_ex = dirichletbc(u_bc_V, bdofs0)
+bc_ex = dirichletbc(u_bc_V, bdofs)
 
 bdofs1 = fem.locate_dofs_topological(V1, entity_dim=facet_dim, entities=facets)
 u_bc_expr_V1 = Expression(uex1, V1.element.interpolation_points())
@@ -73,7 +74,7 @@ bc_ex1 = dirichletbc(u_bc_V1, bdofs1)
 
 bc = [bc_ex, bc_ex1]
 
-u_n = Function(V)
+u_n = Function(V) 
 uex_expr = Expression(uex, V.element.interpolation_points())
 u_n.interpolate(uex_expr)
 
@@ -87,17 +88,46 @@ v = ufl.TestFunction(V)
 u1 = ufl.TrialFunction(V1)
 v1 = ufl.TestFunction(V1)
 
+
+# This is for partial coupling where u_exact is on the RHS
+
+# f = curl(curl(uex)) + diff(uex, t) + grad(diff(uex1,t))
+# a00 = dt * inner(curl(u), curl(v)) * dx + inner(u, v) * dx 
+# a01 = inner(v, grad(u1)) * dx
+# L0 = inner(f, v) * dt * dx + inner(u_n, v) * dx + inner(v,grad(u_n1)) * dx
+
+# f1 = -div(f)
+# a10 = None
+# a11 = inner(grad(u1), grad(v1)) * dx
+# L1 = inner(f1, v1) * dt * dx + inner(grad(u_n1), grad(v1)) * dx - dt * inner(diff(uex,t), grad(v1)) * dx
+
+
+# This is for parital coupling where u1_exact is on the RHS.
+
+# f = curl(curl(uex)) + diff(uex, t) + grad(diff(uex1,t))
+# a00 = dt * inner(curl(u), curl(v)) * dx + inner(u, v) * dx 
+# a01 = None 
+# L0 = inner(f, v) * dt * dx + inner(u_n, v) * dx - dt * inner(grad(diff(uex1,t)), v) * dx
+
+# f1 = -div(f)
+# a10 = inner(grad(v1),u) * dx
+# a11 = inner(grad(u1), grad(v1)) * dx
+# L1 = inner(f1, v1) * dt * dx + inner(grad(u_n1), grad(v1)) * dx + inner(grad(v1), u_n) * dx
+
+# This is for full coupling
+
 f = curl(curl(uex)) + diff(uex, t) + grad(diff(uex1,t))
 a00 = dt * inner(curl(u), curl(v)) * dx + inner(u, v) * dx 
-L0 = inner(f, v) * dt * dx + inner(u_n, v) * dx - dt * inner(grad(diff(uex1,t)), v) * dx
+a01 = inner(v, grad(u1)) * dx
+L0 = inner(f, v) * dt * dx + inner(u_n, v) * dx + inner(v,grad(u_n1)) * dx
 
 f1 = -div(f)
+a10 = inner(grad(v1),u) * dx
 a11 = inner(grad(u1), grad(v1)) * dx
-L1 = inner(f1, v1) * dt * dx + inner(grad(u_n1), grad(v1)) * dx - dt * inner(diff(uex,t), grad(v1)) * dx
+L1 = inner(f1, v1) * dt * dx + inner(grad(u_n1), grad(v1)) * dx +inner(grad(v1), u_n) * dx
 
-a01 = None
-a10 = None
 
+#%%
 a = form([[a00, a01], [a10, a11]])
 
 A_mat = assemble_matrix_block(a, bcs = bc)
