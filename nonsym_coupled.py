@@ -43,6 +43,8 @@ sigma = fem.Constant(domain, default_scalar_type(1))
 
 x = SpatialCoordinate(domain)
 
+# Polynomial Exact solution
+
 def exact(x, t):
     return ufl.as_vector((
         x[1]**2 + x[0]* t, 
@@ -62,6 +64,55 @@ f0 = ufl.as_vector((
 )
 
 f1 = fem.Constant(domain, -9.0)
+
+# Sinuosidal Exact solution
+
+def exact(x, t):
+    return ufl.as_vector((
+        cos(pi * x[1]) * sin(pi * x[0] * t), 
+        cos(pi * x[2]) * sin(pi * x[1] * t), 
+        cos(pi * x[0]) * sin(pi * x[2] * t)
+        ))
+
+def exact1(x, t):
+    return sin(pi * x[0]) * sin(pi * x[1]) * sin(pi * x[2])
+
+uex = exact(x,t)
+uex1 = exact1(x, t)
+
+curl_curl_u0 = ufl.as_vector((
+    pi**2 * sin(pi*t) * sin(pi*x[2]),
+    pi**2 * sin(pi*t) * sin(pi*x[0]),
+    pi**2 * sin(pi*t) * sin(pi*x[1])
+))
+
+dt_u0 = ufl.as_vector((
+    pi * x[0] * cos(pi * x[1]) * cos(pi * x[0] * t),
+    pi * x[1] * cos(pi * x[2]) * cos(pi * x[1] * t),
+    pi * x[2] * cos(pi * x[0]) * cos(pi * x[2] * t)
+))
+
+div_u0 = (
+    pi * (cos(pi * x[1]) * cos(pi * x[0] * t) + 
+         x[0] * cos(pi * x[1]) * (-pi * t) * sin(pi * x[0] * t)) +
+    pi * (cos(pi * x[2]) * cos(pi * x[1] * t) + 
+         x[1] * cos(pi * x[2]) * (-pi * t) * sin(pi * x[1] * t)) +
+    pi * (cos(pi * x[0]) * cos(pi * x[2] * t) + 
+         x[2] * cos(pi * x[0]) * (-pi * t) * sin(pi * x[2] * t))
+)
+
+grad_u1 = ufl.as_vector((
+    pi*cos(pi*x[0]) * sin(pi*x[1]) * sin(pi*x[2]),
+    pi*cos(pi*x[1]) * cos(pi*x[0]) * sin(pi*x[2]),
+    pi*cos(pi*x[2]) * sin(pi*x[0]) * sin(pi*x[1])
+))
+
+div_grad_u1 = -3*pi**2 * sin(pi*x[0]) * sin(pi*x[1]) * sin(pi*x[2])
+
+f0 = curl_curl_u0 + dt_u0 + grad_u1
+f1 = -div_u0 - div_grad_u1
+
+
 
 def boundary_marker(x):
     """Marker function for the boundary of a unit cube"""
